@@ -121,7 +121,8 @@ else:
         color="OccupancyPct",
         size="OccupancyPct",
         size_max=30,
-        color_continuous_scale="Reds",
+        color_continuous_scale=[(0, "green"), (0.4, "yellow"), (0.8, "red")],
+        range_color=[0, 100],
         hover_name="Hospital",
         hover_data={"Region": True, "OccupancyPct": True},
         zoom=11,
@@ -150,12 +151,15 @@ if view.empty:
 else:
     rank = (view.groupby(["Hospital","Region"], as_index=False)["OccupancyPct"]
                  .mean()
-                 .sort_values("OccupancyPct", ascending=False))
+                 .sort_values("OccupancyPct", ascending=True))
     fig_bar = px.bar(
         rank,
         x="Hospital", y="OccupancyPct",
-        color="Region",
+        color="OccupancyPct",
+        color_continuous_scale=[(0, "green"), (0.4, "yellow"), (0.8, "red")],
+        range_color=[0, 100],
         text_auto=".1f",
-        labels={"Hospital":"Hospital", "OccupancyPct":"Avg Bed Occupancy (%)"},
+        labels={"OccupancyPct":"Avg Bed Occupancy (%)"},
+        category_orders={"Hospital": rank["Hospital"].tolist()}
     )
     st.plotly_chart(fig_bar, width="stretch")
