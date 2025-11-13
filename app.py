@@ -330,37 +330,35 @@ with tab2:
         else:
             st.info("Column 'Stay' not found — cannot plot LOS distribution.")
 
-        # 👵 Age vs Length of Stay (LOS)
-        st.subheader("👵 Age vs Length of Stay (LOS)")
+        st.subheader("👵 Age vs Average Length of Stay (LOS)")
+
+        # Compute average LOS by age group
         if {"Age", "Stay_midpoint_days"}.issubset(view.columns):
-            # Convert age to numeric if needed (not strictly required for plotting here)
-            view["Age_num"] = pd.to_numeric(view["Age"], errors="coerce")
-
-            fig_age_los = px.box(
-                view,
-                x="Age",
-                y="Stay_midpoint_days",
-                color="Age",
-                title="Does Ageing Population Lead to Longer Hospital Stays?",
-                labels={
-                    "Age": "Age Group",
-                    "Stay_midpoint_days": "Length of Stay (days)",
-                },
-            )
-            st.plotly_chart(fig_age_los, use_container_width=True)
-
-            # Calculate trend line summary
-            age_los_summary = (
-                view.groupby("Age")["Stay_midpoint_days"]
+            age_los = (
+                view.groupby("Age", as_index=False)["Stay_midpoint_days"]
                 .mean()
-                .reset_index()
+                .rename(columns={"Stay_midpoint_days": "Avg_LOS"})
                 .sort_values("Age")
             )
-
-            st.write("### Average LOS by Age Group")
-            st.dataframe(age_los_summary, use_container_width=True)
+        
+            # Bar Chart
+            fig_age_los = px.bar(
+                age_los,
+                x="Age",
+                y="Avg_LOS",
+                text_auto=".1f",
+                color="Age",
+                color_discrete_sequence=px.colors.qualitative.Pastel,
+                labels={"Avg_LOS": "Average Length of Stay (days)", "Age": "Age Group"},
+                title="📈 Average Length of Stay (LOS) by Age Group",
+            )
+        
+            fig_age_los.update_layout(showlegend=False)
+            fig_age_los.update_traces(textposition="outside")
+        
+            st.plotly_chart(fig_age_los, use_container_width=True)
         else:
-            st.warning("Age or Stay_midpoint_days column missing.")
+            st.info("Required columns 'Age' and 'Stay_midpoint_days' not found.")
 
         st.subheader("📊 Average LOS by Illness Severity and Admission Type")
         needed_cols = {"Severity of Illness", "Type of Admission", "Stay_midpoint_days"}
