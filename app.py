@@ -77,7 +77,7 @@ with tab1:
     mask = (occ_df[DATE_COL] >= pd.to_datetime(start_d)) & (occ_df[DATE_COL] <= pd.to_datetime(end_d))
     view_occ = occ_df[mask]
 
-    thr = st.sidebar.slider("High occupancy threshold (%)", 70, 100, 85, 1)
+    thr = st.sidebar.slider("High occupancy threshold (%)",0, 50, 100, 85, 1)
 
     # KPIs
     k1, k2, k3, k4 = st.columns(4)
@@ -91,18 +91,41 @@ with tab1:
     # Snapshot map + table
     st.subheader("🗺️ Latest Snapshot Map")
     latest = view_occ.loc[view_occ[DATE_COL] == view_occ[DATE_COL].max()].copy()
-    fig_map = px.scatter_mapbox(latest, lat="Lat", lon="Lon",
-                                color="OccupancyPct", size="OccupancyPct",
-                                color_continuous_scale=[(0, "green"), (0.4, "yellow"), (0.8, "red")],
-                                range_color=[0, 100], hover_name="Hospital", zoom=11,
-                                mapbox_style="carto-positron")
+    latest = latest.dropna(subset=["Lat","Lon"])
+
+    # Build the same status buckets used in the table
+    latest["Status"] = np.select(
+        [
+            latest["OccupancyPct"] >= thr,
+            (latest["OccupancyPct"] >= (thr - 10)) & (latest["OccupancyPct"] < thr),
+        ],
+        ["High (≥ Thr)", "Near Thr (−10 to < Thr)"],
+        default="Low (< Thr −10)"
+    )
+    
+    status_colors = {
+        "High (≥ Thr)": "#ef4444",            # red 🔴
+        "Near Thr (−10 to < Thr)": "#f59e0b", # amber 🟠
+        "Low (< Thr −10)": "#3b82f6",         # blue 🔵
+    }
+    
+    fig_map = px.scatter_mapbox(
+        latest, lat="Lat", lon="Lon",
+        color="Status", size="OccupancyPct", size_max=28,
+        hover_name="Hospital",
+        hover_data={"Region": True, "OccupancyPct": True, "Lat": False, "Lon": False},
+        zoom=11, mapbox_style="carto-positron",
+        color_discrete_map=status_colors,
+    )
     st.plotly_chart(fig_map, use_container_width=True)
 
-    snap = latest.groupby(["Hospital", "Region"], as_index=False)["OccupancyPct"].mean()
-    snap["Status"] = snap["OccupancyPct"].apply(lambda x: "≥ Thr" if x >= thr else "< Thr")
-    snap.insert(0, " ", snap["OccupancyPct"].apply(lambda x: "🔴" if x >= thr else ("🟠" if x >= thr-10 else "🔵")))
-    st.dataframe(snap.sort_values("OccupancyPct", ascending=False), use_container_width=True)
-
+    snap = (latest.groupby(["Hospital","Region","Status"], as_index=False)["OccupancyPct"]
+                  .mean())
+    snap["Δ from Thr (%)"] = (snap["OccupancyPct"] - thr).round(1)
+    dot = {"High (≥ Thr)": "🔴", "Near Thr (−10 to < Thr)": "🟠", "Low (< Thr −10)": "🔵"}
+    snap.insert(0, " ", snap["Status"].map(dot))
+    snap_display = snap.style.background_gradient(subset=["OccupancyPct"], cmap="RdYlGn_r")
+    st.dataframe(snap_display, use_container_width=True)
     st.divider()
     st.subheader("⏱️ Occupancy Trend")
     fig_line = px.line(view_occ.sort_values(DATE_COL), x=DATE_COL, y="OccupancyPct",
