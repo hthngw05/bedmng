@@ -268,16 +268,16 @@ with tab2:
         else:
             st.info("Column 'Stay' not found — cannot plot LOS distribution.")
 
-        st.subheader("🧪 LOS by Severity (share within severity)")
-        if {"Stay","Severity of Illness"}.issubset(view.columns):
-            tmp = (view.groupby(["Severity of Illness","Stay"]).size()
-                      .rename("Count").reset_index())
-            tmp["Share"] = tmp.groupby("Severity of Illness")["Count"].transform(lambda s: s/s.sum())
-            fig_stack = px.bar(tmp, x="Severity of Illness", y="Share", color="Stay",
-                               category_orders={"Stay": STAY_ORDER},
-                               text_auto=".0%",
-                               labels={"Share":"Share of patients"})
-            st.plotly_chart(fig_stack, use_container_width=True)
+        # st.subheader("🧪 LOS by Severity (share within severity)")
+        # if {"Stay","Severity of Illness"}.issubset(view.columns):
+        #     tmp = (view.groupby(["Severity of Illness","Stay"]).size()
+        #               .rename("Count").reset_index())
+        #     tmp["Share"] = tmp.groupby("Severity of Illness")["Count"].transform(lambda s: s/s.sum())
+        #     fig_stack = px.bar(tmp, x="Severity of Illness", y="Share", color="Stay",
+        #                        category_orders={"Stay": STAY_ORDER},
+        #                        text_auto=".0%",
+        #                        labels={"Share":"Share of patients"})
+        #     st.plotly_chart(fig_stack, use_container_width=True)
 
         l1, r1 = st.columns(2)
         with l1:
@@ -306,46 +306,45 @@ with tab2:
             fig_dept = px.bar(dept, x="Department", y="Patients", text_auto=True)
             st.plotly_chart(fig_dept, use_container_width=True)
 
-        l2, r2 = st.columns(2)
-        with l2:
-            st.subheader("🛏️ Ward type volume")
-            if "Ward_Type" in view.columns:
-                ward = (view["Ward_Type"].value_counts()
-                        .rename_axis("Ward_Type").reset_index(name="Patients"))
-                fig_ward = px.bar(ward, x="Ward_Type", y="Patients", text_auto=True)
-                st.plotly_chart(fig_ward, use_container_width=True)
-        with r2:
-            st.subheader("🛏️ Ward × Severity (heatmap)")
-            if {"Ward_Type","Severity of Illness"}.issubset(view.columns):
-                mtx = (view.groupby(["Ward_Type","Severity of Illness"])
-                       .size().rename("Count").reset_index())
-                fig_hm = px.density_heatmap(
-                    mtx, x="Ward_Type", y="Severity of Illness", z="Count",
-                    histfunc="sum", text_auto=True
-                )
-                st.plotly_chart(fig_hm, use_container_width=True)
+        
+        st.subheader("🛏️ Ward type volume")
+        if "Ward_Type" in view.columns:
+            ward = (view["Ward_Type"].value_counts()
+                    .rename_axis("Ward_Type").reset_index(name="Patients"))
+            fig_ward = px.bar(ward, x="Ward_Type", y="Patients", text_auto=True)
+            st.plotly_chart(fig_ward, use_container_width=True)
+        # with r2:
+        #     st.subheader("🛏️ Ward × Severity (heatmap)")
+        #     if {"Ward_Type","Severity of Illness"}.issubset(view.columns):
+        #         mtx = (view.groupby(["Ward_Type","Severity of Illness"])
+        #                .size().rename("Count").reset_index())
+        #         fig_hm = px.density_heatmap(
+        #             mtx, x="Ward_Type", y="Severity of Illness", z="Count",
+        #             histfunc="sum", text_auto=True
+        #         )
+        #         st.plotly_chart(fig_hm, use_container_width=True)
 
-        st.subheader("💳 Admission deposit by LOS / Severity")
-        if {"Admission_Deposit","Stay","Severity of Illness"}.issubset(view.columns):
-            tabs = st.tabs(["By LOS band", "By Severity"])
-            with tabs[0]:
-                fig_v1 = px.violin(view, x="Stay", y="Admission_Deposit",
-                                   box=True, points="outliers",
-                                   category_orders={"Stay": STAY_ORDER})
-                st.plotly_chart(fig_v1, use_container_width=True)
-            with tabs[1]:
-                fig_v2 = px.violin(view, x="Severity of Illness", y="Admission_Deposit",
-                                   box=True, points="outliers")
-                st.plotly_chart(fig_v2, use_container_width=True)
+        # st.subheader("💳 Admission deposit by LOS / Severity")
+        # if {"Admission_Deposit","Stay","Severity of Illness"}.issubset(view.columns):
+        #     tabs = st.tabs(["By LOS band", "By Severity"])
+        #     with tabs[0]:
+        #         fig_v1 = px.violin(view, x="Stay", y="Admission_Deposit",
+        #                            box=True, points="outliers",
+        #                            category_orders={"Stay": STAY_ORDER})
+        #         st.plotly_chart(fig_v1, use_container_width=True)
+        #     with tabs[1]:
+        #         fig_v2 = px.violin(view, x="Severity of Illness", y="Admission_Deposit",
+        #                            box=True, points="outliers")
+        #         st.plotly_chart(fig_v2, use_container_width=True)
 
-        st.subheader("🏆 Hospital leaderboard (Avg LOS midpoint days)")
-        if {"Hospital_code","Stay_midpoint_days"}.issubset(view.columns):
-            rank = (view.groupby("Hospital_code", as_index=False)["Stay_midpoint_days"]
-                    .mean().rename(columns={"Stay_midpoint_days":"Avg_LOS_days"})
-                    .sort_values("Avg_LOS_days", ascending=False))
-            fig_rank = px.bar(rank, x="Hospital_code", y="Avg_LOS_days",
-                              text_auto=".1f", labels={"Avg_LOS_days":"Avg LOS (days)"})
-            st.plotly_chart(fig_rank, use_container_width=True)
+        # st.subheader("🏆 Hospital leaderboard (Avg LOS midpoint days)")
+        # if {"Hospital_code","Stay_midpoint_days"}.issubset(view.columns):
+        #     rank = (view.groupby("Hospital_code", as_index=False)["Stay_midpoint_days"]
+        #             .mean().rename(columns={"Stay_midpoint_days":"Avg_LOS_days"})
+        #             .sort_values("Avg_LOS_days", ascending=False))
+        #     fig_rank = px.bar(rank, x="Hospital_code", y="Avg_LOS_days",
+        #                       text_auto=".1f", labels={"Avg_LOS_days":"Avg LOS (days)"})
+        #     st.plotly_chart(fig_rank, use_container_width=True)
 
         with st.expander("🧾 View filtered rows"):
             st.dataframe(view.head(1000), use_container_width=True)
