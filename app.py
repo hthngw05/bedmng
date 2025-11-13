@@ -40,15 +40,15 @@ with tab1:
     CSV_PATH = "67_cleaned.csv"
 
     HOSPITAL_META = {
-        "AH": {"name": "Alexandra Hospital (AH)", "region": "West", "lat": 1.2879, "lon": 103.8021},
-        "CGH": {"name": "Changi General Hospital (CGH)", "region": "East", "lat": 1.3418, "lon": 103.9496},
-        "KTPH": {"name": "Khoo Teck Puat Hospital (KTPH)", "region": "North", "lat": 1.4246, "lon": 103.8388},
-        "NTFGH": {"name": "Ng Teng Fong General Hospital (NTFGH)", "region": "West", "lat": 1.3347, "lon": 103.7450},
-        "NUH(A)": {"name": "National University Hospital (Adults)", "region": "West", "lat": 1.2940, "lon": 103.7834},
-        "SGH": {"name": "Singapore General Hospital (SGH)", "region": "Central", "lat": 1.2794, "lon": 103.8340},
-        "SKH": {"name": "Sengkang General Hospital (SKH)", "region": "Northeast", "lat": 1.3918, "lon": 103.8931},
-        "TTSH": {"name": "Tan Tock Seng Hospital (TTSH)", "region": "Central", "lat": 1.3210, "lon": 103.8450},
-        "WH": {"name": "Woodlands Health (WH)", "region": "North", "lat": 1.4360, "lon": 103.7870},
+        "AH":    {"name": "Alexandra Hospital (AH)",                     "region": "West",      "lat": 1.2879, "lon": 103.8021},
+        "CGH":   {"name": "Changi General Hospital (CGH)",               "region": "East",      "lat": 1.3418, "lon": 103.9496},
+        "KTPH":  {"name": "Khoo Teck Puat Hospital (KTPH)",              "region": "North",     "lat": 1.4246, "lon": 103.8388},
+        "NTFGH": {"name": "Ng Teng Fong General Hospital (NTFGH)",       "region": "West",      "lat": 1.3347, "lon": 103.7450},
+        "NUH(A)":{"name": "National University Hospital (Adults)",       "region": "West",      "lat": 1.2940, "lon": 103.7834},
+        "SGH":   {"name": "Singapore General Hospital (SGH)",            "region": "Central",   "lat": 1.2794, "lon": 103.8340},
+        "SKH":   {"name": "Sengkang General Hospital (SKH)",             "region": "Northeast", "lat": 1.3918, "lon": 103.8931},
+        "TTSH":  {"name": "Tan Tock Seng Hospital (TTSH)",               "region": "Central",   "lat": 1.3210, "lon": 103.8450},
+        "WH":    {"name": "Woodlands Health (WH)",                       "region": "North",     "lat": 1.4360, "lon": 103.7870},
     }
 
     @st.cache_data
@@ -56,10 +56,14 @@ with tab1:
         df = pd.read_csv(path)
         df.columns = df.columns.str.strip()
         df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
-        id_vars = [c for c in [DATE_COL, YEAR_COL] if c in df.columns]  # <-- guard Years
+        id_vars = [c for c in [DATE_COL, YEAR_COL] if c in df.columns]  # guard if Years not present
         hosp_cols = [c for c in df.columns if c not in id_vars]
-        long_df = df.melt(id_vars=id_vars, value_vars=hosp_cols,
-                          var_name="HospitalAbbr", value_name="OccupancyPct")
+        long_df = df.melt(
+            id_vars=id_vars,
+            value_vars=hosp_cols,
+            var_name="HospitalAbbr",
+            value_name="OccupancyPct"
+        )
         long_df["OccupancyPct"] = pd.to_numeric(long_df["OccupancyPct"], errors="coerce")
         long_df["Hospital"] = long_df["HospitalAbbr"].map(lambda a: HOSPITAL_META.get(a, {}).get("name", a))
         long_df["Region"]   = long_df["HospitalAbbr"].map(lambda a: HOSPITAL_META.get(a, {}).get("region"))
@@ -73,7 +77,10 @@ with tab1:
     # Sidebar filters
     st.sidebar.header("🔎 Filters (Hospital Dashboard)")
     min_d, max_d = occ_df[DATE_COL].min(), occ_df[DATE_COL].max()
-    start_d, end_d = st.sidebar.date_input("Date range", value=(min_d.date(), max_d.date()))
+    start_d, end_d = st.sidebar.date_input(
+        "Date range",
+        value=(min_d.date(), max_d.date())
+    )
     mask = (occ_df[DATE_COL] >= pd.to_datetime(start_d)) & (occ_df[DATE_COL] <= pd.to_datetime(end_d))
     view_occ = occ_df[mask]
 
@@ -91,9 +98,9 @@ with tab1:
     # Snapshot map + table
     st.subheader("🗺️ Latest Snapshot Map")
     latest = view_occ.loc[view_occ[DATE_COL] == view_occ[DATE_COL].max()].copy()
-    latest = latest.dropna(subset=["Lat","Lon"])
+    latest = latest.dropna(subset=["Lat", "Lon"])
 
-    # Build the same status buckets used in the table
+    # Status buckets
     latest["Status"] = np.select(
         [
             latest["OccupancyPct"] >= thr,
@@ -102,13 +109,13 @@ with tab1:
         ["High (≥ Thr)", "Near Thr (−10 to < Thr)"],
         default="Low (< Thr −10)"
     )
-    
+
     status_colors = {
         "High (≥ Thr)": "#ef4444",            # red 🔴
         "Near Thr (−10 to < Thr)": "#f59e0b", # amber 🟠
         "Low (< Thr −10)": "#3b82f6",         # blue 🔵
     }
-    
+
     fig_map = px.scatter_mapbox(
         latest, lat="Lat", lon="Lon",
         color="Status", size="OccupancyPct", size_max=28,
@@ -119,18 +126,27 @@ with tab1:
     )
     st.plotly_chart(fig_map, use_container_width=True)
 
-    snap = (latest.groupby(["Hospital","Region","Status"], as_index=False)["OccupancyPct"]
-                  .mean())
+    snap = (
+        latest.groupby(["Hospital", "Region", "Status"], as_index=False)["OccupancyPct"]
+        .mean()
+    )
     snap["Δ from Thr (%)"] = (snap["OccupancyPct"] - thr).round(1)
     dot = {"High (≥ Thr)": "🔴", "Near Thr (−10 to < Thr)": "🟠", "Low (< Thr −10)": "🔵"}
     snap.insert(0, " ", snap["Status"].map(dot))
     snap_display = snap.style.background_gradient(subset=["OccupancyPct"], cmap="RdYlGn_r")
     st.dataframe(snap_display, use_container_width=True)
+
     st.divider()
+
     st.subheader("⏱️ Occupancy Trend")
-    fig_line = px.line(view_occ.sort_values(DATE_COL), x=DATE_COL, y="OccupancyPct",
-                       color="Hospital", markers=True,
-                       labels={"OccupancyPct": "Bed Occupancy (%)"})
+    fig_line = px.line(
+        view_occ.sort_values(DATE_COL),
+        x=DATE_COL,
+        y="OccupancyPct",
+        color="Hospital",
+        markers=True,
+        labels={"OccupancyPct": "Bed Occupancy (%)"},
+    )
     fig_line.add_hrect(y0=thr, y1=100, fillcolor="red", opacity=0.12)
     fig_line.add_hline(y=thr, line_dash="dot", line_color="red")
     st.plotly_chart(fig_line, use_container_width=True)
@@ -139,12 +155,17 @@ with tab1:
     hospitals = sorted(occ_df["Hospital"].unique().tolist())
     sel_hosps = st.multiselect("Select hospitals to compare", hospitals, default=hospitals[:4])
     df_sel = occ_df[occ_df["Hospital"].isin(sel_hosps)]
-    # choose ONE plot (kept histogram density, remove overwrite)
-    fig_dist = px.histogram(df_sel, x="OccupancyPct", color="Hospital",
-                            marginal="box", nbins=30, opacity=0.6,
-                            histnorm="probability density",
-                            title="Occupancy Distribution for Major Hospitals (2018–2025)",
-                            labels={"OccupancyPct": "Occupancy Rate (%)"})
+    fig_dist = px.histogram(
+        df_sel,
+        x="OccupancyPct",
+        color="Hospital",
+        marginal="box",
+        nbins=30,
+        opacity=0.6,
+        histnorm="probability density",
+        title="Occupancy Distribution for Major Hospitals (2018–2025)",
+        labels={"OccupancyPct": "Occupancy Rate (%)"},
+    )
     st.plotly_chart(fig_dist, use_container_width=True)
 
 # ----------------------------------------------------------
@@ -159,8 +180,25 @@ with tab2:
         los_df.columns = los_df.columns.str.strip()
 
         # --- LOS mapping ---
-        STAY_ORDER = ["0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100","More than 100 Days"]
-        STAY_TO_MID = {"0-10":5,"11-20":15,"21-30":25,"31-40":35,"41-50":45,"51-60":55,"61-70":65,"71-80":75,"81-90":85,"91-100":95,"More than 100 Days":105}
+        STAY_ORDER = [
+            "0-10", "11-20", "21-30", "31-40", "41-50",
+            "51-60", "61-70", "71-80", "81-90", "91-100",
+            "More than 100 Days"
+        ]
+        STAY_TO_MID = {
+            "0-10": 5,
+            "11-20": 15,
+            "21-30": 25,
+            "31-40": 35,
+            "41-50": 45,
+            "51-60": 55,
+            "61-70": 65,
+            "71-80": 75,
+            "81-90": 85,
+            "91-100": 95,
+            "More than 100 Days": 105,
+        }
+
         if "Stay" in los_df.columns:
             los_df["Stay"] = pd.Categorical(los_df["Stay"], categories=STAY_ORDER, ordered=True)
             los_df["Stay_midpoint_days"] = los_df["Stay"].map(STAY_TO_MID).astype(float)
@@ -172,7 +210,7 @@ with tab2:
         st.sidebar.header("🔎 Filters (LOS Dashboard)")
 
         def multisel(df, col, label=None):
-            if col not in df.columns: 
+            if col not in df.columns:
                 return df
             opts = sorted(df[col].dropna().astype(str).unique().tolist())
             sel = st.sidebar.multiselect(label or col, opts, default=opts)
@@ -191,14 +229,20 @@ with tab2:
         view = multisel(view, "Age")
 
         # Optional numeric filters
-        if "Bed Grade" in view.columns:
+        if "Bed Grade" in view.columns and len(view) > 0:
             lo, hi = int(np.nanmin(view["Bed Grade"])), int(np.nanmax(view["Bed Grade"]))
             g0, g1 = st.sidebar.slider("Bed Grade", min_value=lo, max_value=hi, value=(lo, hi))
             view = view[(view["Bed Grade"] >= g0) & (view["Bed Grade"] <= g1)]
-        if "Admission_Deposit" in view.columns:
+
+        if "Admission_Deposit" in view.columns and len(view) > 0:
             lo = int(np.nanpercentile(view["Admission_Deposit"], 1))
             hi = int(np.nanpercentile(view["Admission_Deposit"], 99))
-            d0, d1 = st.sidebar.slider("Admission deposit (trimmed)", min_value=lo, max_value=hi, value=(lo, hi))
+            d0, d1 = st.sidebar.slider(
+                "Admission deposit (trimmed)",
+                min_value=lo,
+                max_value=hi,
+                value=(lo, hi),
+            )
             view = view[(view["Admission_Deposit"] >= d0) & (view["Admission_Deposit"] <= d1)]
 
         st.sidebar.download_button(
@@ -229,17 +273,26 @@ with tab2:
                 top_type  = str(admit_counts.index[0])
                 top_count = int(admit_counts.iloc[0])
                 top_share = float(admit_share.iloc[0])
-                pieces = [f"{t}: {int(c):,} ({admit_share[t]:.0f}%)" for t, c in admit_counts.items()]
-                admit_summary_caption = " • ".join(pieces[:5]) + (f" • +{len(pieces)-5} more" if len(pieces)>5 else "")
+                pieces = [
+                    f"{t}: {int(c):,} ({admit_share[t]:.0f}%)"
+                    for t, c in admit_counts.items()
+                ]
+                admit_summary_caption = " • ".join(pieces[:5]) + (
+                    f" • +{len(pieces)-5} more" if len(pieces) > 5 else ""
+                )
 
         # Average stay (days)
         avg_stay_days = float(view["Stay_midpoint_days"].mean()) if len(view) else float("nan")
 
         c1, c2, c3, c4 = st.columns(4)
-        with c1: kpi_card("Total Patients", f"{total_patients:,}", "Filtered selection", "#0ea5e9")
-        with c2: kpi_card("Critical Cases", f"{critical_count:,}", "Extreme or Emergency", "#ef4444")
-        with c3: kpi_card("Top Admission Type", top_type, f"{top_count:,} ", "#f59e0b")
-        with c4: kpi_card("Average Stay (days)", f"{avg_stay_days:.1f}", "Midpoint estimate", "#10b981")
+        with c1:
+            kpi_card("Total Patients", f"{total_patients:,}", "Filtered selection", "#0ea5e9")
+        with c2:
+            kpi_card("Critical Cases", f"{critical_count:,}", "Extreme or Emergency", "#ef4444")
+        with c3:
+            kpi_card("Top Admission Type", top_type, f"{top_count:,} ", "#f59e0b")
+        with c4:
+            kpi_card("Average Stay (days)", f"{avg_stay_days:.1f}", "Midpoint estimate", "#10b981")
 
         # Optional full table under cards
         if "Type of Admission" in view.columns and total_patients > 0 and not admit_counts.empty:
@@ -251,7 +304,7 @@ with tab2:
                     "Share (%)": (admit_counts / total_patients * 100).round(1).values
                 }),
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
             )
 
         st.divider()
@@ -259,25 +312,65 @@ with tab2:
         # ===================== Visuals =====================
         st.subheader("🏨 Length of Stay distribution")
         if "Stay" in view.columns:
-            stay_ct = (view["Stay"].value_counts(dropna=False)
-                       .reindex(STAY_ORDER).fillna(0)
-                       .rename_axis("Stay").reset_index(name="Patients"))
-            fig_stay = px.bar(stay_ct, x="Stay", y="Patients", text_auto=True,
-                              labels={"Patients":"Patients"})
+            stay_ct = (
+                view["Stay"].value_counts(dropna=False)
+                .reindex(STAY_ORDER)
+                .fillna(0)
+                .rename_axis("Stay")
+                .reset_index(name="Patients")
+            )
+            fig_stay = px.bar(
+                stay_ct,
+                x="Stay",
+                y="Patients",
+                text_auto=True,
+                labels={"Patients": "Patients"},
+            )
             st.plotly_chart(fig_stay, use_container_width=True)
         else:
             st.info("Column 'Stay' not found — cannot plot LOS distribution.")
+
+        # 👵 Age vs Length of Stay (LOS)
+        st.subheader("👵 Age vs Length of Stay (LOS)")
+        if {"Age", "Stay_midpoint_days"}.issubset(view.columns):
+            # Convert age to numeric if needed (not strictly required for plotting here)
+            view["Age_num"] = pd.to_numeric(view["Age"], errors="coerce")
+
+            fig_age_los = px.box(
+                view,
+                x="Age",
+                y="Stay_midpoint_days",
+                color="Age",
+                title="Does Ageing Population Lead to Longer Hospital Stays?",
+                labels={
+                    "Age": "Age Group",
+                    "Stay_midpoint_days": "Length of Stay (days)",
+                },
+            )
+            st.plotly_chart(fig_age_los, use_container_width=True)
+
+            # Calculate trend line summary
+            age_los_summary = (
+                view.groupby("Age")["Stay_midpoint_days"]
+                .mean()
+                .reset_index()
+                .sort_values("Age")
+            )
+
+            st.write("### Average LOS by Age Group")
+            st.dataframe(age_los_summary, use_container_width=True)
+        else:
+            st.warning("Age or Stay_midpoint_days column missing.")
+
         st.subheader("📊 Average LOS by Illness Severity and Admission Type")
-    
         needed_cols = {"Severity of Illness", "Type of Admission", "Stay_midpoint_days"}
         if needed_cols.issubset(view.columns) and len(view) > 0:
-            # compute mean LOS (in days) for each Severity × Admission type
             los_sev_adm = (
                 view
                 .groupby(["Severity of Illness", "Type of Admission"], as_index=False)["Stay_midpoint_days"]
                 .mean()
             )
-        
+
             fig_los = px.bar(
                 los_sev_adm,
                 x="Severity of Illness",
@@ -291,26 +384,21 @@ with tab2:
                 },
                 title="Average Length of Stay by Illness Severity and Admission Type",
             )
-        
-            st.plotly_chart(fig_los, width="stretch")
+
+            st.plotly_chart(fig_los, use_container_width=True)
         else:
             st.info("Columns 'Severity of Illness', 'Type of Admission' and 'Stay_midpoint_days' are required for this chart.")
-        # st.subheader("🧪 LOS by Severity (share within severity)")
-        # if {"Stay","Severity of Illness"}.issubset(view.columns):
-        #     tmp = (view.groupby(["Severity of Illness","Stay"]).size()
-        #               .rename("Count").reset_index())
-        #     tmp["Share"] = tmp.groupby("Severity of Illness")["Count"].transform(lambda s: s/s.sum())
-        #     fig_stack = px.bar(tmp, x="Severity of Illness", y="Share", color="Stay",
-        #                        category_orders={"Stay": STAY_ORDER},
-        #                        text_auto=".0%",
-        #                        labels={"Share":"Share of patients"})
-        #     st.plotly_chart(fig_stack, use_container_width=True)
 
         l1, r1 = st.columns(2)
         with l1:
             st.subheader("🚑 Admission type mix")
             if "Type of Admission" in view.columns:
-                adm = view["Type of Admission"].value_counts().rename_axis("Type").reset_index(name="Count")
+                adm = (
+                    view["Type of Admission"]
+                    .value_counts()
+                    .rename_axis("Type")
+                    .reset_index(name="Count")
+                )
                 fig_adm = px.pie(adm, names="Type", values="Count", hole=0.35)
                 st.plotly_chart(fig_adm, use_container_width=True)
             else:
@@ -318,9 +406,12 @@ with tab2:
         with r1:
             st.subheader("👥 Age band distribution")
             if "Age" in view.columns:
-                age_ct = (view["Age"].value_counts()
-                          .rename_axis("Age").reset_index(name="Count")
-                          .sort_values("Age"))
+                age_ct = (
+                    view["Age"].value_counts()
+                    .rename_axis("Age")
+                    .reset_index(name="Count")
+                    .sort_values("Age")
+                )
                 fig_age = px.bar(age_ct, x="Age", y="Count", text_auto=True)
                 st.plotly_chart(fig_age, use_container_width=True)
             else:
@@ -328,50 +419,26 @@ with tab2:
 
         st.subheader("🏥 Department volume (Top 15)")
         if "Department" in view.columns:
-            dept = (view["Department"].value_counts()
-                    .head(15).rename_axis("Department").reset_index(name="Patients"))
+            dept = (
+                view["Department"]
+                .value_counts()
+                .head(15)
+                .rename_axis("Department")
+                .reset_index(name="Patients")
+            )
             fig_dept = px.bar(dept, x="Department", y="Patients", text_auto=True)
             st.plotly_chart(fig_dept, use_container_width=True)
 
-        
         st.subheader("🛏️ Ward type volume")
         if "Ward_Type" in view.columns:
-            ward = (view["Ward_Type"].value_counts()
-                    .rename_axis("Ward_Type").reset_index(name="Patients"))
+            ward = (
+                view["Ward_Type"]
+                .value_counts()
+                .rename_axis("Ward_Type")
+                .reset_index(name="Patients")
+            )
             fig_ward = px.bar(ward, x="Ward_Type", y="Patients", text_auto=True)
             st.plotly_chart(fig_ward, use_container_width=True)
-        # with r2:
-        #     st.subheader("🛏️ Ward × Severity (heatmap)")
-        #     if {"Ward_Type","Severity of Illness"}.issubset(view.columns):
-        #         mtx = (view.groupby(["Ward_Type","Severity of Illness"])
-        #                .size().rename("Count").reset_index())
-        #         fig_hm = px.density_heatmap(
-        #             mtx, x="Ward_Type", y="Severity of Illness", z="Count",
-        #             histfunc="sum", text_auto=True
-        #         )
-        #         st.plotly_chart(fig_hm, use_container_width=True)
-
-        # st.subheader("💳 Admission deposit by LOS / Severity")
-        # if {"Admission_Deposit","Stay","Severity of Illness"}.issubset(view.columns):
-        #     tabs = st.tabs(["By LOS band", "By Severity"])
-        #     with tabs[0]:
-        #         fig_v1 = px.violin(view, x="Stay", y="Admission_Deposit",
-        #                            box=True, points="outliers",
-        #                            category_orders={"Stay": STAY_ORDER})
-        #         st.plotly_chart(fig_v1, use_container_width=True)
-        #     with tabs[1]:
-        #         fig_v2 = px.violin(view, x="Severity of Illness", y="Admission_Deposit",
-        #                            box=True, points="outliers")
-        #         st.plotly_chart(fig_v2, use_container_width=True)
-
-        # st.subheader("🏆 Hospital leaderboard (Avg LOS midpoint days)")
-        # if {"Hospital_code","Stay_midpoint_days"}.issubset(view.columns):
-        #     rank = (view.groupby("Hospital_code", as_index=False)["Stay_midpoint_days"]
-        #             .mean().rename(columns={"Stay_midpoint_days":"Avg_LOS_days"})
-        #             .sort_values("Avg_LOS_days", ascending=False))
-        #     fig_rank = px.bar(rank, x="Hospital_code", y="Avg_LOS_days",
-        #                       text_auto=".1f", labels={"Avg_LOS_days":"Avg LOS (days)"})
-        #     st.plotly_chart(fig_rank, use_container_width=True)
 
         with st.expander("🧾 View filtered rows"):
             st.dataframe(view.head(1000), use_container_width=True)
