@@ -77,7 +77,7 @@ with tab1:
     mask = (occ_df[DATE_COL] >= pd.to_datetime(start_d)) & (occ_df[DATE_COL] <= pd.to_datetime(end_d))
     view_occ = occ_df[mask]
 
-    thr = st.sidebar.slider("High occupancy threshold (%)",0, 50, 100, 85, 1)
+    thr = st.sidebar.slider("High occupancy threshold (%)", 50, 100, 85, 1)
 
     # KPIs
     k1, k2, k3, k4 = st.columns(4)
