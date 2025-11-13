@@ -256,7 +256,7 @@ with tab2:
 
         st.divider()
 
-        # ===================== Visuals (no readmission/visits) =====================
+        # ===================== Visuals =====================
         st.subheader("🏨 Length of Stay distribution")
         if "Stay" in view.columns:
             stay_ct = (view["Stay"].value_counts(dropna=False)
@@ -267,7 +267,34 @@ with tab2:
             st.plotly_chart(fig_stay, use_container_width=True)
         else:
             st.info("Column 'Stay' not found — cannot plot LOS distribution.")
-
+        st.subheader("📊 Average LOS by Illness Severity and Admission Type")
+    
+    needed_cols = {"Severity of Illness", "Type of Admission", "Stay_midpoint_days"}
+    if needed_cols.issubset(view.columns) and len(view) > 0:
+        # compute mean LOS (in days) for each Severity × Admission type
+        los_sev_adm = (
+            view
+            .groupby(["Severity of Illness", "Type of Admission"], as_index=False)["Stay_midpoint_days"]
+            .mean()
+        )
+    
+        fig_los = px.bar(
+            los_sev_adm,
+            x="Severity of Illness",
+            y="Stay_midpoint_days",
+            color="Type of Admission",
+            barmode="group",
+            labels={
+                "Severity of Illness": "Severity of Illness",
+                "Stay_midpoint_days": "Average Length of Stay (days)",
+                "Type of Admission": "Type of Admission",
+            },
+            title="Average Length of Stay by Illness Severity and Admission Type",
+        )
+    
+        st.plotly_chart(fig_los, width="stretch")
+    else:
+        st.info("Columns 'Severity of Illness', 'Type of Admission' and 'Stay_midpoint_days' are required for this chart.")
         # st.subheader("🧪 LOS by Severity (share within severity)")
         # if {"Stay","Severity of Illness"}.issubset(view.columns):
         #     tmp = (view.groupby(["Severity of Illness","Stay"]).size()
